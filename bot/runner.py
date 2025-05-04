@@ -11,7 +11,7 @@ async def main():
 
     runner = BacktestRunner(
         tickers=tickers,
-        days=60,              # Глубина выгрузки
+        days=120,              # Глубина выгрузки
         window_days=None,      # или укажи например 60
         stride_days=None,      # или укажи например 30
         save_reports=True
