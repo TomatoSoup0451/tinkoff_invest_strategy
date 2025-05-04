@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+
+# Virtual environments
+.venv/
+env/
+.venv
+.env
+
+# IDE
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Tokens and sensitive info
+.env
+token.txt
+
+# Output files
+*.md
+*.png
