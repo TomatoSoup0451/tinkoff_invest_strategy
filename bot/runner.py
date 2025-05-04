@@ -16,7 +16,64 @@ TOKEN = os.getenv("TOKEN_SANDBOX")  # или боевой
 
 # === Индикаторы ===
 
-def save_markdown_table(trades_df, path_md="latest_trades.md", path_img="equity_curve.png", max_rows=10):
+async def get_futures_spec(ticker: str):
+    async with AsyncClient(TOKEN) as client:
+        response = await client.instruments.futures()
+        for fut in response.instruments:
+            if fut.ticker == ticker:
+                print(f"Найден: {fut.ticker} | FIGI: {fut.figi} | Название: {fut.name}")
+                return {
+                    "figi": fut.figi,
+                    "step_price": fut.min_price_increment_amount.units + fut.min_price_increment_amount.nano / 1e9,
+                    "lot": fut.basic_asset_size.units + fut.basic_asset_size.nano / 1e9 or fut.lot
+                }
+        print(f"Не найдено совпадений для {ticker}")
+        return None
+
+
+async def run_backtest_for_figi(figi: str, name: str):
+    async with AsyncSandboxClient(TOKEN) as client:
+        candles = []
+        async for candle in client.get_all_candles(
+            figi=figi,
+            from_=now() - timedelta(days=90),
+            interval=CandleInterval.CANDLE_INTERVAL_HOUR,
+        ):
+            candles.append({
+                "time": candle.time,
+                "open": candle.open.units + candle.open.nano / 1e9,
+                "high": candle.high.units + candle.high.nano / 1e9,
+                "low": candle.low.units + candle.low.nano / 1e9,
+                "close": candle.close.units + candle.close.nano / 1e9,
+                "volume": candle.volume,
+            })
+
+        df = pd.DataFrame(candles)
+        df.set_index("time", inplace=True)
+        df = calculate_indicators(df)
+        df = add_signals(df)
+        df = apply_position(df)
+        trades_df = calculate_pnl(df)
+        analyze_trades(trades_df)
+        save_markdown_table(trades_df, name, path_md=f"{name}_trades.md", path_img=f"{name}_equity.png")
+
+        print(f"🧾 {name} — готово.\n")
+
+def save_summary_table(stats_list, filename="summary.md"):
+    import pandas as pd
+
+    df = pd.DataFrame(stats_list)
+    df.set_index("Актив", inplace=True)
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("# 📊 Сводная таблица по активам\n\n")
+        f.write(df.to_markdown(tablefmt="github"))
+
+    print(f"Сводная таблица сохранена в {filename}")
+
+
+
+def save_markdown_table(trades_df, name: str, path_md="latest_trades.md", path_img="equity_curve.png", max_rows=20):
     if trades_df.empty:
         print("Нет сделок для сохранения.")
         return
@@ -36,7 +93,7 @@ def save_markdown_table(trades_df, path_md="latest_trades.md", path_img="equity_
     df = df.tail(max_rows)
 
     lines = []
-    lines.append("# 📋 Последние сделки\n")
+    lines.append(f"# 📋 Последние сделки по {name}\n")
     lines.append(f"![Equity Curve]({path_img})\n")
     lines.append("| Entry Time       | Exit Time        | Side  | Entry Price | Exit Price | PnL Raw | PnL Net |")
     lines.append("|------------------|------------------|-------|-------------|------------|---------|---------|")
@@ -59,7 +116,7 @@ def save_markdown_table(trades_df, path_md="latest_trades.md", path_img="equity_
     print(f"График equity сохранён: {path_img}")
 
 
-def analyze_trades(trades_df):
+def analyze_trades(trades_df, name: str):
     if trades_df.empty:
         print("Нет сделок для анализа.")
         return
@@ -71,9 +128,8 @@ def analyze_trades(trades_df):
     avg_win = wins["pnl_net"].mean()
     avg_loss = losses["pnl_net"].mean()
     max_drawdown = trades_df["pnl_net"].cumsum().cummax() - trades_df["pnl_net"].cumsum()
-    equity = trades_df["pnl_net"].cumsum()
 
-    print("\n📊 Статистика по стратегиям:")
+    print(f"\n📊 Статистика по {name}:")
     print(f"Всего сделок: {total_trades}")
     print(f"Winrate: {winrate:.2f}%")
     print(f"Средняя прибыль: {avg_win:.2f} ₽")
@@ -81,13 +137,18 @@ def analyze_trades(trades_df):
     print(f"Максимальная просадка: {max_drawdown.max():.2f} ₽")
     print(f"Итоговая чистая прибыль: {trades_df['pnl_net'].sum():.2f} ₽")
 
-    # Построим equity curve
-    trades_df["equity"] = equity
-    trades_df.set_index("exit_time")["equity"].plot(figsize=(10, 4), title="Equity Curve", grid=True)
-    plt.xlabel("Дата выхода из сделки")
-    plt.ylabel("Накопленная прибыль (₽)")
-    plt.tight_layout()
-    plt.show()
+    return {
+        "Актив": name,
+        "Всего сделок": total_trades,
+        "Winrate": round(winrate, 2),
+        "Средняя прибыль": round(avg_win, 2),
+        "Средний убыток": round(avg_loss, 2),
+        "Макс. просадка": round(max_drawdown.max(), 2),
+        "Итоговая прибыль": round(trades_df["pnl_net"].sum(), 2),
+    }
+
+
+
 
 def calculate_indicators(df):
     df["sma_50"] = df["close"].rolling(window=50).mean()
@@ -195,43 +256,50 @@ def calculate_pnl(df, commission_per_trade=0.0004):
 # === Основной код ===
 
 async def main():
-    figi = await find_figi("RIM5")
-    if figi is None:
-        print("Не удалось найти FIGI, завершение.")
-        return
+    tickers = {
+        "RIM5": "RTS",
+        "MMM5": "MOEX",
+        "BRM5": "BRENT",
+        "GZM5": "GAZ"
+    }
 
-    async with AsyncSandboxClient(TOKEN) as client:
-        candles = []
-        async for candle in client.get_all_candles(
-            figi=figi,
-            from_=now() - timedelta(days=180),
-            interval=CandleInterval.CANDLE_INTERVAL_HOUR,
-        ):
-            candles.append({
-                "time": candle.time,
-                "open": candle.open.units + candle.open.nano / 1e9,
-                "high": candle.high.units + candle.high.nano / 1e9,
-                "low": candle.low.units + candle.low.nano / 1e9,
-                "close": candle.close.units + candle.close.nano / 1e9,
-                "volume": candle.volume,
-            })
+    summary_stats = []
 
-        df = pd.DataFrame(candles)
-        df.set_index("time", inplace=True)
-        df = calculate_indicators(df)
+    for ticker, name in tickers.items():
+        figi = await find_figi(ticker)
+        if figi:
+            async with AsyncSandboxClient(TOKEN) as client:
+                candles = []
+                async for candle in client.get_all_candles(
+                    figi=figi,
+                    from_=now() - timedelta(days=90),
+                    interval=CandleInterval.CANDLE_INTERVAL_HOUR,
+                ):
+                    candles.append({
+                        "time": candle.time,
+                        "open": candle.open.units + candle.open.nano / 1e9,
+                        "high": candle.high.units + candle.high.nano / 1e9,
+                        "low": candle.low.units + candle.low.nano / 1e9,
+                        "close": candle.close.units + candle.close.nano / 1e9,
+                        "volume": candle.volume,
+                    })
 
-        df = calculate_indicators(df)
-        df = add_signals(df)
-        df = apply_position(df)
+                df = pd.DataFrame(candles)
+                df.set_index("time", inplace=True)
+                df = calculate_indicators(df)
+                df = add_signals(df)
+                df = apply_position(df)
+                trades_df = calculate_pnl(df)
+                stats = analyze_trades(trades_df, name=name)
+                save_markdown_table(trades_df, path_md=f"{name}_trades.md", path_img=f"{name}_equity.png", name=name)
 
-        trades_df = calculate_pnl(df)
+                if stats:
+                    summary_stats.append(stats)
+        else:
+            print(f"FIGI не найдено для {ticker}")
 
-        print(trades_df)
-        print(f"\nВсего сделок: {len(trades_df)}")
-        print(f"Суммарная чистая прибыль: {trades_df['pnl_net'].sum():.2f}₽")
+    save_summary_table(summary_stats, filename="summary.md")
 
-        analyze_trades(trades_df)
-        save_markdown_table(trades_df)
 
 
 if __name__ == "__main__":
