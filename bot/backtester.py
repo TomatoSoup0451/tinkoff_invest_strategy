@@ -4,10 +4,13 @@ import pandas as pd
 from datetime import datetime
 import os
 
-from data_loader import get_futures_spec, load_candles
+from bot.futures_catalog import ARCHIVE_FUTURES
+from data_loader import get_futures_spec, load_candles, get_active_futures_spec, get_spec_from_archive
 from indicators import calculate_indicators, add_signals
 from analyzer import analyze_trades
 from report import save_markdown_table, save_summary_table
+
+
 
 def apply_position(df):
     df["position"] = 0
@@ -79,10 +82,23 @@ class BacktestRunner:
 
     async def preload_data(self):
         for ticker in self.tickers:
-            spec = await get_futures_spec(ticker)
+            spec = await get_active_futures_spec(ticker)
+
+            if not spec and ticker in ARCHIVE_FUTURES:
+                figi = ARCHIVE_FUTURES[ticker]
+                print(f"🔁 Пытаемся загрузить архивный фьючерс: {ticker} -> {figi}")
+                spec = get_spec_from_archive(ticker)
+
             if not spec:
+                print(f"❌ Не удалось получить спецификацию для {ticker}")
                 continue
-            df = await load_candles(spec["figi"], days=self.days, force_refresh=self.force_refresh)
+
+            df = await load_candles(spec["figi"], days=self.days)
+
+            if df.empty:
+                print(f"⚠️ Пропускаем {ticker} — данных нет.")
+                continue
+
             self.data_cache[ticker] = {
                 "df": df,
                 "spec": spec

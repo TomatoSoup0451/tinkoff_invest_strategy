@@ -1,4 +1,4 @@
-# Python
+# Python artifacts
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -10,17 +10,29 @@ env/
 .venv
 .env
 
-# IDE
+# IDEs and editors
 .idea/
+.vscode/
 
 # System files
 .DS_Store
 Thumbs.db
 
-# Tokens and sensitive info
+# Secrets and tokens
 .env
 token.txt
 
-# Output files
+# Outputs and generated content
 *.md
 *.png
+*.csv
+*.xlsx
+*.parquet
+
+# Data folders
+data/candles/
+data/candles_filtered/
+data/candles_joined/
+data/candles_human/
+data/candles_human_csv/
+raw_data/
