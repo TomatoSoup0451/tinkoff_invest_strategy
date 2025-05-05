@@ -4,17 +4,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
-REPORT_DIR = "reports"
-os.makedirs(REPORT_DIR, exist_ok=True)
-
-
-def save_markdown_table(trades_df, name: str, path_md="latest_trades.md", path_img="equity_curve.png", max_rows=50):
+def save_markdown_table(trades_df, name: str, report_dir: str, max_rows=50):
     if trades_df.empty:
         print("Нет сделок для сохранения.")
         return
 
-    path_md = os.path.join(REPORT_DIR, f"{name}_trades.md")
-    path_img = os.path.join(REPORT_DIR, f"{name}_equity.png")
+    path_md = os.path.join(report_dir, f"{name}_trades.md")
+    path_img = os.path.join(report_dir, f"{name}_equity.png")
 
     trades_df["equity"] = trades_df["pnl_net"].cumsum()
     trades_df.set_index("exit_time")["equity"].plot(figsize=(10, 4), title="Equity Curve", grid=True)
@@ -41,8 +37,8 @@ def save_markdown_table(trades_df, name: str, path_md="latest_trades.md", path_i
     with open(path_md, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-def save_summary_table(stats_list):
-    filename = os.path.join(REPORT_DIR, "summary.md")
+def save_summary_table(stats_list, report_dir: str):
+    filename = os.path.join(report_dir, "summary.md")
     df = pd.DataFrame(stats_list)
     df.set_index("Актив", inplace=True)
 

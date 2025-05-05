@@ -1,12 +1,13 @@
 from datetime import timedelta
 from typing import Dict, Optional
 import pandas as pd
+from datetime import datetime
+import os
 
 from data_loader import get_futures_spec, load_candles
 from indicators import calculate_indicators, add_signals
 from analyzer import analyze_trades
 from report import save_markdown_table, save_summary_table
-
 
 def apply_position(df):
     df["position"] = 0
@@ -53,12 +54,14 @@ def calculate_pnl(df, step_price: float, lot: float, commission_rate=0.0004):
 
 class BacktestRunner:
     def __init__(
-        self,
-        tickers: Dict[str, str],
-        days: int = 365,
-        window_days: Optional[int] = None,
-        stride_days: Optional[int] = None,
-        save_reports: bool = True,
+            self,
+            tickers: Dict[str, str],
+            days: int = 365,
+            window_days: Optional[int] = None,
+            stride_days: Optional[int] = None,
+            save_reports: bool = True,
+            force_refresh: bool = False,
+            report_dir: Optional[str] = None# ⬅️ Новый параметр
     ):
         self.tickers = tickers
         self.days = days
@@ -66,13 +69,20 @@ class BacktestRunner:
         self.stride_days = stride_days
         self.save_reports = save_reports
         self.data_cache = {}
+        self.force_refresh = force_refresh
+        if report_dir is None:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.report_dir = os.path.join("reports", timestamp)
+        else:
+            self.report_dir = report_dir
+        os.makedirs(self.report_dir, exist_ok=True)
 
     async def preload_data(self):
         for ticker in self.tickers:
             spec = await get_futures_spec(ticker)
             if not spec:
                 continue
-            df = await load_candles(spec["figi"], days=self.days)
+            df = await load_candles(spec["figi"], days=self.days, force_refresh=self.force_refresh)
             self.data_cache[ticker] = {
                 "df": df,
                 "spec": spec
@@ -88,7 +98,7 @@ class BacktestRunner:
         stats = analyze_trades(trades_df, name)
 
         if self.save_reports:
-            save_markdown_table(trades_df, name)
+            save_markdown_table(trades_df, name, self.report_dir)
 
         return stats
 
@@ -135,7 +145,7 @@ class BacktestRunner:
                     summary_stats.append(stats)
 
         if self.save_reports:
-            save_summary_table(summary_stats)
+            save_summary_table(summary_stats, self.report_dir)
 
 
 
