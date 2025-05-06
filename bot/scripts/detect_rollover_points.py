@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import re
 
-INPUT_DIR = Path("data/candles_filtered")
+INPUT_DIR = Path("../data/candles_filtered")
 ROLLING_DAYS = 1
 
 pattern = re.compile(r"(FUTRTS\d{6})_(\d{4})")  # контракт + год

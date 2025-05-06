@@ -5,8 +5,8 @@ import pandas as pd
 from io import TextIOWrapper
 
 # Constants
-RAW_DATA_DIR = Path("raw_data/historic_candles")
-OUTPUT_DIR = Path("data/candles")
+RAW_DATA_DIR = Path("../raw_data/historic_candles")
+OUTPUT_DIR = Path("../data/candles")
 
 # Columns: id, datetime, open, high, low, close, volume, empty
 COLUMNS = ["id", "datetime", "open", "high", "low", "close", "volume", "_"]

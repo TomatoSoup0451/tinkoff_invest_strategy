@@ -40,6 +40,14 @@ def save_markdown_table(trades_df, name: str, report_dir: str, max_rows=50):
 def save_summary_table(stats_list, report_dir: str):
     filename = os.path.join(report_dir, "summary.md")
     df = pd.DataFrame(stats_list)
+    for col in ["source", "strategy"]:
+        if col in df.columns:
+            df.drop(columns=[col], inplace=True)
+    if "start" in df.columns:
+        df["start"] = pd.to_datetime(df["start"]).dt.date
+
+    if "end" in df.columns:
+        df["end"] = pd.to_datetime(df["end"]).dt.date
     df.set_index("Актив", inplace=True)
 
     def format_number(x):

@@ -3,13 +3,13 @@ import pandas as pd
 
 # Папки с исходными parquet-файлами
 INPUT_DIRS = [
-    Path("data/candles"),
-    Path("data/candles_filtered"),
-    Path("data/candles_joined"),
+    Path("../data/candles"),
+    Path("../data/candles_filtered"),
+    Path("../data/candles_joined"),
 ]
 
 # Папка для сохранения CSV
-OUTPUT_DIR = Path("data/candles_human_csv")
+OUTPUT_DIR = Path("../data/candles_human_csv")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def convert_datetime_column(df: pd.DataFrame) -> pd.DataFrame:

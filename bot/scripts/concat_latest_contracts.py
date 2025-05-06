@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import re
 
-INPUT_DIR = Path("data/candles_filtered")
+INPUT_DIR = Path("../data/candles_filtered")
 OUTPUT_PATH = Path("data/candles_joined/RTS_merged_latest.parquet")
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
