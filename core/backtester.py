@@ -28,6 +28,7 @@ class BacktestRunner:
     def run(self):
         log.info("🚀 Запуск BacktestRunner...")
         for source, df in self.data_provider.get_dataframes():
+
             df = df.copy()
             df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
             df = df.sort_values("datetime")

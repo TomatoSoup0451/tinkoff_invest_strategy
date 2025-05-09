@@ -1,3 +1,4 @@
+from multiprocessing.util import debug
 from pathlib import Path
 import itertools
 from tqdm import tqdm
@@ -6,38 +7,38 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from core.backtester import BacktestRunner
 from providers.parquet import ParquetDataProvider
 from core.strategy import BasicStrategy
-from providers.rollover_provider import RolloverDataProvider
+from providers.rollover_hourly import RolloverHourlyProvider
+from providers.rollover_minutes import RolloverMinuteProvider
 from simulators.basic import BasicTradeSimulator
 from analyzers.sma_rsi import SMARSIAnalyzer
 from writers.md_writer import save_summary_table, save_strategy_summary, save_markdown_table
 from evaluators.aggregator import aggregate_by_strategy
+from config import StrategyConfig
 
 
 # Глобальные параметры
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data" / "candles_filtered"
 fixed_atr = 14
+config = StrategyConfig(mode="debug")
 
-# Параметры стратегии
-sma_values = [20, 40, 60, 100]
-rsi_values = [7, 14, 21]
-rsi_buy_thresholds = [60, 65, 70, 75]
-rsi_sell_thresholds = [30, 35, 40, 45]
+
 
 param_grid = [
     (sma, rsi, rsi_buy, rsi_sell)
     for sma, rsi, rsi_buy, rsi_sell in itertools.product(
-        sma_values, rsi_values, rsi_buy_thresholds, rsi_sell_thresholds
+        config.sma_values, config.rsi_values,
+        config.rsi_buy_thresholds, config.rsi_sell_thresholds
     )
     if rsi_buy > rsi_sell
 ]
 
-
 def run_one_strategy(args):
+
     sma, rsi, rsi_buy, rsi_sell = args
     strategy_id = f"SMARSI_sma{sma}_rsi{rsi}_atr{fixed_atr}_buy{rsi_buy}_sell{rsi_sell}"
 
-    provider = RolloverDataProvider(DATA_DIR, debug_output=True)
+    provider = RolloverMinuteProvider(DATA_DIR, debug_output=config.debug_data_provider)
 
     def strategy_class():
         analyzer = SMARSIAnalyzer(
@@ -61,11 +62,12 @@ def run_one_strategy(args):
 
     bt.run()
 
-#    for row in bt.results:
-#        row["strategy_id"] = strategy_id
-#        trades = row.get("trades_df")
-#        if trades is not None and not trades.empty:
-#            save_markdown_table(trades, name=row["strategy_id"], max_rows=1000)
+    if config.save_individual_reports:
+        for row in bt.results:
+            row["strategy_id"] = strategy_id
+            trades = row.get("trades_df")
+            if trades is not None and not trades.empty:
+                save_markdown_table(trades, name=row["strategy_id"], max_rows=1000)
 
     save_summary_table(bt.results, strategy_id)
 
@@ -86,11 +88,21 @@ def main():
                 if results:
                     all_results.extend(results)
             except Exception as e:
+                print(e)
                 pass  # Можно логировать ошибку, если захочешь
 
     strategy_df = aggregate_by_strategy(all_results)
     save_strategy_summary(strategy_df)
 
+def hourly_minutes_comparison():
+    hourly_provider = RolloverHourlyProvider(DATA_DIR)
+    minutes_provider = RolloverMinuteProvider(DATA_DIR)
+    print(hourly_provider.get_dataframes())
+    print(minutes_provider.get_dataframes())
+    print(hourly_provider.get_cached_df())
+    print(minutes_provider.get_cached_df())
+    diff = hourly_provider.get_cached_df().compare(minutes_provider.get_cached_df())
+    print(diff)
 
 if __name__ == "__main__":
     from multiprocessing import freeze_support

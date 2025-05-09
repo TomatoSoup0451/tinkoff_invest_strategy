@@ -46,7 +46,7 @@ def save_markdown_table(trades_df, name: str, max_rows=50):
     plt.close()
 
     base_cols = ["entry_time", "exit_time", "side", "entry_price", "exit_price", "pnl_raw"]
-    optional_cols = ["commission", "slippage", "contract_code"]
+    optional_cols = ["commission", "slippage", "contract_code", "exit_reason"]
     final_cols = base_cols + [col for col in optional_cols if col in trades_df.columns] + ["pnl_net"]
 
     df = trades_df[final_cols].tail(max_rows)
