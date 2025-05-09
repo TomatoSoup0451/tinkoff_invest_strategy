@@ -6,16 +6,14 @@ from datetime import timedelta
 from tinkoff.invest import AsyncClient, CandleInterval
 from tinkoff.invest.sandbox.async_client import AsyncSandboxClient
 from tinkoff.invest.utils import now
-from tinkoff.invest import InstrumentIdType
 from dotenv import load_dotenv
-from google.protobuf.json_format import MessageToDict
 
-from bot.futures_catalog import ARCHIVE_FUTURES
+from core.catalogs.futures_catalog import ARCHIVE_FUTURES
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN_SANDBOX")
 
-CANDLE_DIR = "data/candles"
+CANDLE_DIR = "../data/candles"
 os.makedirs(CANDLE_DIR, exist_ok=True)
 
 

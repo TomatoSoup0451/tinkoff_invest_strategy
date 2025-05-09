@@ -1,31 +1,32 @@
-from bot.analyzers.sma_rsi import SMARSIAnalyzer
-from strategy import BasicStrategy
-from historical_backtester import HistoricalBacktester
+from analyzers.sma_rsi import SMARSIAnalyzer
+from core.strategy import BasicStrategy
+from core.historical_backtester import HistoricalBacktester
 from pathlib import Path
-from report import save_summary_table, save_markdown_table
+from writers.md_writer import save_summary_table
 import os
 import re
+
+from simulators.basic import BasicTradeSimulator
+
 
 def sanitize_filename(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9_\-.]', '_', str(name))
 
 
-report_dir = "report"
-os.makedirs(report_dir, exist_ok=True)
 
-analyzer = SMARSIAnalyzer(sma=50, rsi=14, rsi_buy=55, rsi_sell=45)
-strategy = lambda: BasicStrategy(analyzer)
+analyzer = SMARSIAnalyzer(sma=50, rsi=14)
+simulator = BasicTradeSimulator()
+strategy_class = lambda: BasicStrategy(analyzer, simulator)
 
 bt = HistoricalBacktester(
-    strategy_class=strategy,
-    data_dir=Path("data/candles_filtered"),
+    strategy_class=strategy_class,
+    data_dir=Path("../data/candles_filtered"),
     window_days=30,
     stride_days=10
 )
 bt.run()
-bt.run()
 
 # Печать результатов
 # summary по всем окнам
-save_summary_table(bt.results, report_dir)
+save_summary_table(bt.results)
 

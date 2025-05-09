@@ -4,11 +4,11 @@ import pandas as pd
 from datetime import datetime
 import os
 
-from bot.futures_catalog import ARCHIVE_FUTURES
-from data_loader import get_futures_spec, load_candles, get_active_futures_spec, get_spec_from_archive
+from core.catalogs.futures_catalog import ARCHIVE_FUTURES
+from data_loader import load_candles, get_active_futures_spec, get_spec_from_archive
 from indicators import calculate_indicators, add_signals
 from analyzer import analyze_trades
-from report import save_markdown_table, save_summary_table
+from writers.md_writer import save_markdown_table, save_summary_table
 
 
 
@@ -75,7 +75,7 @@ class BacktestRunner:
         self.force_refresh = force_refresh
         if report_dir is None:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            self.report_dir = os.path.join("reports", timestamp)
+            self.report_dir = os.path.join("../reports", timestamp)
         else:
             self.report_dir = report_dir
         os.makedirs(self.report_dir, exist_ok=True)

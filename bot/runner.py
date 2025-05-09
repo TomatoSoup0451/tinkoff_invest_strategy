@@ -1,5 +1,5 @@
 import asyncio
-from bot.backtester import BacktestRunner  # Убедись, что путь правильный
+from core.live_backtester import BacktestRunner  # Убедись, что путь правильный
 
 async def main():
     tickers = {

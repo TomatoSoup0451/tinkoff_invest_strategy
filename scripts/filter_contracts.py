@@ -3,8 +3,8 @@ import pandas as pd
 import re
 
 # Path to folder with raw parquet files
-INPUT_DIR = Path("data/candles")
-OUTPUT_DIR = Path("data/candles_filtered")
+INPUT_DIR = Path("../data/candles")
+OUTPUT_DIR = Path("../data/candles_filtered")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 DAYS = 90
 

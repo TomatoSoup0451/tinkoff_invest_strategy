@@ -1,6 +1,6 @@
 import pandas as pd
 
-from bot.analyzers.base import SignalAnalyzerBase
+from analyzers.base import SignalAnalyzerBase
 
 
 class SMARSIAnalyzer(SignalAnalyzerBase):

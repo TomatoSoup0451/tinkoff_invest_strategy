@@ -22,14 +22,18 @@ Thumbs.db
 .env
 token.txt
 
-# Outputs and generated content
+# Logs and reports
+logs/
+reports/
+
+# Output and generated content
 *.md
 *.png
 *.csv
 *.xlsx
 *.parquet
 
-# Data folders
+# Data folders (auto-generated or processed)
 data/candles/
 data/candles_filtered/
 data/candles_joined/
