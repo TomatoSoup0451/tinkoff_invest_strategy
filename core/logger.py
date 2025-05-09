@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 
-def get_logger(name: str = "bot") -> logging.Logger:
+def get_logger(name: str = "runner") -> logging.Logger:
     logger = logging.getLogger(name)
     if logger.hasHandlers():
         return logger
