@@ -3,6 +3,9 @@ import pandas as pd
 from analyzers.base import SignalAnalyzerBase
 from evaluators import metrics
 from evaluators.strategy_evaluator import StrategyEvaluator
+from core.logger import get_logger
+
+log = get_logger(__name__)
 
 class BasicStrategy:
     def __init__(self, analyzer, simulator):
@@ -16,6 +19,7 @@ class BasicStrategy:
         df = df.copy()
         df = self.analyzer.calculate(df)
         df["signal"] = df.apply(self.analyzer.get_signal, axis=1)
+
         self.trades = self.simulator.simulate(df, df["signal"])
 
         result = self.evaluator.evaluate(self.trades)

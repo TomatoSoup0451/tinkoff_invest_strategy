@@ -46,7 +46,7 @@ def save_markdown_table(trades_df, name: str, max_rows=50):
     plt.close()
 
     base_cols = ["entry_time", "exit_time", "side", "entry_price", "exit_price", "pnl_raw"]
-    optional_cols = ["commission", "slippage"]
+    optional_cols = ["commission", "slippage", "contract_code"]
     final_cols = base_cols + [col for col in optional_cols if col in trades_df.columns] + ["pnl_net"]
 
     df = trades_df[final_cols].tail(max_rows)
@@ -67,6 +67,7 @@ def save_markdown_table(trades_df, name: str, max_rows=50):
         f.write("\n".join(lines))
 
     log.info(f"💾 Отчёт сохранён: {path_md.name}, график: {path_img.name}")
+
 
 
 def save_summary_table(results: list[dict], strategy_id: str):

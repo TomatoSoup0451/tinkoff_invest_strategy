@@ -6,7 +6,7 @@ def get_logger(name: str = "runner") -> logging.Logger:
     if logger.hasHandlers():
         return logger
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
 
     ch = logging.StreamHandler()

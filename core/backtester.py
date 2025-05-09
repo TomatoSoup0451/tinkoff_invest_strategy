@@ -13,8 +13,12 @@ class BacktestRunner:
         strategy_class: Type,
         data_provider: DataProvider,
         window_days: Optional[int] = None,
-        stride_days: Optional[int] = None
+        stride_days: Optional[int] = None,
+        exclude_days_start: int = 0,
+        exclude_days_end: int = 0
     ):
+        self.exclude_days_end = exclude_days_end
+        self.exclude_days_start = exclude_days_start
         self.strategy_class = strategy_class
         self.data_provider = data_provider
         self.window_days = window_days
@@ -39,14 +43,15 @@ class BacktestRunner:
 
         fut_code = source.split("_")[0]
         contract_name = f"{fut_code} (full)"
-        start, end = df["datetime"].min(), df["datetime"].max()
+        start = df["datetime"].min() + timedelta(days=self.exclude_days_start)
+        end = df["datetime"].max() - timedelta(days=self.exclude_days_end)
 
         result = self._make_result(df, strategy, source, contract_name, start, end)
         self.results.append(result)
 
     def _run_rolling_windows(self, df: pd.DataFrame, source: str):
-        start = df["datetime"].min()
-        end = df["datetime"].max()
+        start = df["datetime"].min() + timedelta(days=self.exclude_days_start)
+        end = df["datetime"].max() - timedelta(days=self.exclude_days_end)
         window = timedelta(days=self.window_days)
         stride = timedelta(days=self.stride_days or self.window_days)
 

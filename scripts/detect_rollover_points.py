@@ -38,7 +38,7 @@ def find_rollover_day(curr_df, next_df, expiry_date):
     return None, None
 
 def main():
-    files = sorted(INPUT_DIR.glob("FUTRTS*_180d_candle_interval_hour.parquet"))
+    files = sorted(INPUT_DIR.glob("FUTRTS*_100d_candle_interval_hour.parquet"))
     contracts = []
     for f in files:
         match = pattern.match(f.stem)

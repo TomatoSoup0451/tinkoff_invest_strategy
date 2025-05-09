@@ -1,6 +1,9 @@
 import pandas as pd
 
 from analyzers.base import SignalAnalyzerBase
+from core.logger import get_logger
+
+log = get_logger(__name__)
 
 
 class SMARSIAnalyzer(SignalAnalyzerBase):
@@ -23,8 +26,11 @@ class SMARSIAnalyzer(SignalAnalyzerBase):
         return df
 
     def get_signal(self, row: pd.Series) -> int:
+        signal = 0
         if row["close"] > row["sma"] and row["rsi"] > self.params["rsi_buy"]:
-            return 1
+            signal = 1
         elif row["close"] < row["sma"] and row["rsi"] < self.params["rsi_sell"]:
-            return -1
-        return 0
+            signal = -1
+
+        # Логгируем всё, не только сигналы
+        return signal
