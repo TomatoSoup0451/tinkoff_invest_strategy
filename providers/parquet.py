@@ -64,7 +64,7 @@ class ParquetCandleProvider(AbstractCandleProvider):
         minute_df = self.get_minute_candles(ticker, from_dt, to_dt)
         resampled = (
             minute_df.set_index("datetime")
-            .resample("1H")
+            .resample("1h")
             .agg({
                 "open": "first",
                 "high": "max",
