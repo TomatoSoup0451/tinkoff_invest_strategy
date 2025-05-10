@@ -1,16 +1,14 @@
-from multiprocessing.util import debug
 from pathlib import Path
 import itertools
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from core.backtester import BacktestRunner
-from providers.parquet import ParquetDataProvider
 from core.strategy import BasicStrategy
-from providers.rollover_hourly import RolloverHourlyProvider
-from providers.rollover_minutes import RolloverMinuteProvider
+from providers.parquet import ParquetCandleProvider
 from simulators.basic import BasicTradeSimulator
 from analyzers.sma_rsi import SMARSIAnalyzer
+from simulators.rollover import RolloverTradeSimulator
 from writers.md_writer import save_summary_table, save_strategy_summary, save_markdown_table
 from evaluators.aggregator import aggregate_by_strategy
 from config import StrategyConfig
@@ -23,7 +21,6 @@ fixed_atr = 14
 config = StrategyConfig(mode="debug")
 
 
-
 param_grid = [
     (sma, rsi, rsi_buy, rsi_sell)
     for sma, rsi, rsi_buy, rsi_sell in itertools.product(
@@ -33,12 +30,12 @@ param_grid = [
     if rsi_buy > rsi_sell
 ]
 
-def run_one_strategy(args):
 
+def run_one_strategy(args):
     sma, rsi, rsi_buy, rsi_sell = args
     strategy_id = f"SMARSI_sma{sma}_rsi{rsi}_atr{fixed_atr}_buy{rsi_buy}_sell{rsi_sell}"
 
-    provider = RolloverMinuteProvider(DATA_DIR, debug_output=config.debug_data_provider)
+    provider = ParquetCandleProvider(data_dir=DATA_DIR)
 
     def strategy_class():
         analyzer = SMARSIAnalyzer(
@@ -48,7 +45,7 @@ def run_one_strategy(args):
             rsi_buy=rsi_buy,
             rsi_sell=rsi_sell,
         )
-        simulator = BasicTradeSimulator(commission_rate=0.0004, slippage=10)
+        simulator = RolloverTradeSimulator(commission_rate=0.0004, slippage=10)
         return BasicStrategy(analyzer=analyzer, simulator=simulator)
 
     bt = BacktestRunner(
@@ -56,8 +53,7 @@ def run_one_strategy(args):
         data_provider=provider,
         exclude_days_end=0,
         exclude_days_start=0,
-
-
+        tickers=config.tickers if hasattr(config, "tickers") else None
     )
 
     bt.run()
@@ -70,8 +66,6 @@ def run_one_strategy(args):
                 save_markdown_table(trades, name=row["strategy_id"], max_rows=1000)
 
     save_summary_table(bt.results, strategy_id)
-
-
 
     return bt.results
 
@@ -94,17 +88,8 @@ def main():
     strategy_df = aggregate_by_strategy(all_results)
     save_strategy_summary(strategy_df)
 
-def hourly_minutes_comparison():
-    hourly_provider = RolloverHourlyProvider(DATA_DIR)
-    minutes_provider = RolloverMinuteProvider(DATA_DIR)
-    print(hourly_provider.get_dataframes())
-    print(minutes_provider.get_dataframes())
-    print(hourly_provider.get_cached_df())
-    print(minutes_provider.get_cached_df())
-    diff = hourly_provider.get_cached_df().compare(minutes_provider.get_cached_df())
-    print(diff)
 
 if __name__ == "__main__":
     from multiprocessing import freeze_support
-    freeze_support()  # для Windows
+    freeze_support()
     main()
