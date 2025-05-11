@@ -18,7 +18,7 @@ from config import StrategyConfig
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data" / "candles_filtered"
 fixed_atr = 14
-config = StrategyConfig(mode="full")
+config = StrategyConfig(mode="debug")
 
 
 param_grid = [
