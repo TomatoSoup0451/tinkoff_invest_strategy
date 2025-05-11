@@ -28,13 +28,31 @@ def format_number(x):
     return str(x)
 
 
-def save_markdown_table(trades_df, name: str, max_rows=50):
+def save_markdown_table(
+    trades_df,
+    name: str,
+    max_rows=50,
+    start: datetime = None,
+    end: datetime = None,
+    ticker: str = None
+):
     if trades_df.empty:
         return
 
     report_dir = get_report_dir()
-    path_md = report_dir / f"{name}_trades.md"
-    path_img = report_dir / f"{name}_equity.png"
+
+    suffix_parts = []
+
+    if ticker:
+        suffix_parts.append(ticker)
+
+    if start and end:
+        suffix_parts.append(f"{start.date()}_{end.date()}")
+
+    suffix = "_" + "_".join(suffix_parts) if suffix_parts else ""
+
+    path_md = report_dir / f"{name}{suffix}_trades.md"
+    path_img = report_dir / f"{name}{suffix}_equity.png"
 
     trades_df = trades_df.copy()
     trades_df["equity"] = trades_df["pnl_net"].cumsum()

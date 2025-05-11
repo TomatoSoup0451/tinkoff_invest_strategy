@@ -34,38 +34,45 @@ class BacktestRunner:
         strategy = self.strategy_class()
         is_rollover = getattr(strategy.simulator, "rollover_aware", False)
 
-        if is_rollover:
-            minute_df = self.data_provider.get_minute_candles(ticker=self.tickers)
-            hourly_df = self.data_provider.get_hourly_candles(ticker=self.tickers)
-
-            for df in (minute_df, hourly_df):
-                df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
-                df = df.sort_values("datetime")
-
-            contract_name = "Rollover Strategy"
-            start = hourly_df["datetime"].min()
-            end = hourly_df["datetime"].max()
-
-            result = self._make_result(minute_df, hourly_df, strategy, contract_name, contract_name, start, end)
-            self.results.append(result)
-            return
-
         tickers_to_run = self.tickers or self.data_provider.get_available_tickers()
 
-        for ticker in tickers_to_run:
-            minute_df = self.data_provider.get_minute_candles(ticker=ticker)
-            hourly_df = self.data_provider.get_hourly_candles(ticker=ticker)
+        # Rollover работает как один общий контракт
+        if is_rollover:
+            ticker = tickers_to_run  # список или один тикер
+            raw_hourly = self.data_provider.get_hourly_candles(ticker=ticker)
+            if raw_hourly.empty:
+                log.warning("⚠️ Нет данных для Rollover стратегии")
+                return
 
-            if minute_df.empty or hourly_df.empty:
+            start = raw_hourly["datetime"].min() + timedelta(days=self.exclude_days_start)
+            end = raw_hourly["datetime"].max() - timedelta(days=self.exclude_days_end)
+
+            minute_df = self.data_provider.get_minute_candles(ticker=ticker, from_dt=start, to_dt=end)
+            hourly_df = self.data_provider.get_hourly_candles(ticker=ticker, from_dt=start, to_dt=end)
+
+            if self.window_days:
+                self._run_rolling_windows(minute_df, hourly_df, "Rollover")
+            else:
+                self._run_full(minute_df, hourly_df, "Rollover")
+
+            return
+
+        # Обычные стратегии по каждому тикеру
+        for ticker in tickers_to_run:
+            raw_hourly = self.data_provider.get_hourly_candles(ticker=ticker)
+            if raw_hourly.empty:
                 log.warning(f"⚠️ Нет данных для контракта {ticker}")
                 continue
 
-            minute_df = minute_df.copy()
-            hourly_df = hourly_df.copy()
+            start = raw_hourly["datetime"].min() + timedelta(days=self.exclude_days_start)
+            end = raw_hourly["datetime"].max() - timedelta(days=self.exclude_days_end)
 
-            for df in (minute_df, hourly_df):
-                df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
-                df.sort_values("datetime", inplace=True)
+            minute_df = self.data_provider.get_minute_candles(ticker=ticker, from_dt=start, to_dt=end)
+            hourly_df = self.data_provider.get_hourly_candles(ticker=ticker, from_dt=start, to_dt=end)
+
+            if minute_df.empty or hourly_df.empty:
+                log.warning(f"⚠️ Нет свечей в окне {start} → {end} для контракта {ticker}")
+                continue
 
             if self.window_days:
                 self._run_rolling_windows(minute_df, hourly_df, ticker)
@@ -77,15 +84,15 @@ class BacktestRunner:
         self.strategy_id = strategy.strategy_id
 
         contract_name = f"{contract_code} (full)"
-        start = hourly_df["datetime"].min() + timedelta(days=self.exclude_days_start)
-        end = hourly_df["datetime"].max() - timedelta(days=self.exclude_days_end)
+        start = hourly_df["datetime"].min()
+        end = hourly_df["datetime"].max()
 
         result = self._make_result(minute_df, hourly_df, strategy, contract_code, contract_name, start, end)
         self.results.append(result)
 
     def _run_rolling_windows(self, minute_df: pd.DataFrame, hourly_df: pd.DataFrame, contract_code: str):
-        start = hourly_df["datetime"].min() + timedelta(days=self.exclude_days_start)
-        end = hourly_df["datetime"].max() - timedelta(days=self.exclude_days_end)
+        start = hourly_df["datetime"].min()
+        end = hourly_df["datetime"].max()
         window = timedelta(days=self.window_days)
         stride = timedelta(days=self.stride_days or self.window_days)
 
@@ -103,22 +110,21 @@ class BacktestRunner:
 
             contract_name = f"{contract_code} ({current.date()} → {(current + window).date()})"
 
-            result = self._make_result(min_window, hour_window, strategy, contract_code, contract_name, current,
-                                       current + window)
+            result = self._make_result(min_window, hour_window, strategy, contract_code, contract_name, current, current + window)
             self.results.append(result)
             current += stride
 
     def _make_result(
-            self,
-            minute_df: pd.DataFrame,
-            hourly_df: pd.DataFrame,
-            strategy,
-            contract_code: str,
-            contract_name: str,
-            start,
-            end
+        self,
+        minute_df: pd.DataFrame,
+        hourly_df: pd.DataFrame,
+        strategy,
+        contract_code: str,
+        contract_name: str,
+        start,
+        end
     ) -> dict:
-        result = strategy.run(hourly_df, minute_df=minute_df)  # передаём минутки явно
+        result = strategy.run(hourly_df, minute_df=minute_df)
         result["contract"] = contract_name
         result["strategy"] = strategy
         result["strategy_id"] = strategy.strategy_id
@@ -126,4 +132,3 @@ class BacktestRunner:
         result["start"] = start
         result["end"] = end
         return result
-

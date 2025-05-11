@@ -18,7 +18,7 @@ from config import StrategyConfig
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data" / "candles_filtered"
 fixed_atr = 14
-config = StrategyConfig(mode="debug")
+config = StrategyConfig(mode="stupid")
 
 
 param_grid = [
@@ -27,7 +27,7 @@ param_grid = [
         config.sma_values, config.rsi_values,
         config.rsi_buy_thresholds, config.rsi_sell_thresholds
     )
-    if rsi_buy > rsi_sell
+
 ]
 
 
@@ -51,9 +51,11 @@ def run_one_strategy(args):
     bt = BacktestRunner(
         strategy_class=strategy_class,
         data_provider=provider,
-        exclude_days_end=0,
-        exclude_days_start=0,
-        tickers=config.tickers if hasattr(config, "tickers") else None
+
+        tickers=config.tickers if hasattr(config, "tickers") else None,
+        stride_days=0,
+        window_days=0
+
     )
 
     bt.run()
@@ -62,8 +64,16 @@ def run_one_strategy(args):
         for row in bt.results:
             row["strategy_id"] = strategy_id
             trades = row.get("trades_df")
+
             if trades is not None and not trades.empty:
-                save_markdown_table(trades, name=row["strategy_id"], max_rows=1000)
+                save_markdown_table(
+                    trades,
+                    name=row["strategy_id"],
+                    max_rows=1000,
+                    start=row.get("start"),
+                    end=row.get("end"),
+                    ticker=row.get("source")
+                )
 
     save_summary_table(bt.results, strategy_id)
 

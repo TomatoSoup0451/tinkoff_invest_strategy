@@ -43,22 +43,12 @@ for zip_path in RAW_DATA_DIR.glob("*.zip"):
 
     # Combine all minutes into one DataFrame
     minutes_df = pd.concat(all_minutes).sort_values("datetime")
-    minutes_df.set_index("datetime", inplace=True)
-
-    # Resample to hourly candles
-    hours_df = minutes_df.resample("1H", label="left", closed="left").agg({
-        "open": "first",
-        "high": "max",
-        "low": "min",
-        "close": "last",
-        "volume": "sum"
-    }).dropna()
 
     # Reset index and save
-    hours_df.reset_index(inplace=True)
+    minutes_df.reset_index(drop=True, inplace=True)
 
     # Generate output filename from zip file name
     base_name = zip_path.stem  # e.g., FUTRTS032200_2020
     output_file = OUTPUT_DIR / f"{base_name}.parquet"
-    hours_df.to_parquet(output_file, index=False)
+    minutes_df.to_parquet(output_file, index=False)
     print(f"Saved {output_file}")
