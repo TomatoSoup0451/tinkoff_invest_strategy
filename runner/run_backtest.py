@@ -18,7 +18,7 @@ from config import StrategyConfig
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data" / "candles_filtered"
 fixed_atr = 14
-config = StrategyConfig(mode="stupid")
+config = StrategyConfig(mode="full")
 
 
 param_grid = [
@@ -54,8 +54,9 @@ def run_one_strategy(args):
 
         tickers=config.tickers if hasattr(config, "tickers") else None,
         stride_days=0,
-        window_days=0
-
+        window_days=0,
+        exclude_days_start=400,
+        exclude_days_end=30
     )
 
     bt.run()

@@ -41,7 +41,8 @@ class RolloverTradeSimulator(TradeSimulatorBase):
             row = df.iloc[i]
             current_contract = row["contract_code"]
             time = row["datetime"]
-            signal = row["signal"]
+            signal = signals.iloc[i - 1] if i > 0 else 0
+
 
             # Инициализация контракта
             if active_contract is None:

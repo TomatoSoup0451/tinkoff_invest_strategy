@@ -17,10 +17,10 @@ class StrategyConfig:
 
     def __post_init__(self):
         if self.mode == "debug":
-            self.sma_values = (20,)
-            self.rsi_values = (7,)
+            self.sma_values = (60,)
+            self.rsi_values = (21,)
             self.rsi_buy_thresholds = (60,)
-            self.rsi_sell_thresholds = (45,)
+            self.rsi_sell_thresholds = (30,)
             self.save_individual_reports = True
             self.debug_data_provider = True
             self.max_workers = 16
